@@ -97,7 +97,7 @@ def post_new_news():
         print("✅ No new articles to post.")
         return
 
-    message = f"📅 **تاریخ شمسی:** {persian_date}\n📅 **تاریخ میلادی:** {dutch_date}\n\n"
+    # message = f"📅 **تاریخ شمسی:** {persian_date}\n📅 **تاریخ میلادی:** {dutch_date}\n\n"
 
     for title, link in new_news:
         translated_title = translator.translate(title, src="nl", dest="fa").text
