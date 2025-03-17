@@ -8,7 +8,7 @@ import os
 
 # ✅ Load Telegram Bot Token from GitHub Secrets
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHANNEL_ID = "@your_channel"  # Or "-100XXXXXXXXX" if your channel is private
+CHANNEL_ID = "@DuchNewsFa"  # Or "-100XXXXXXXXX" if your channel is private
 
 if not TELEGRAM_TOKEN:
     raise ValueError("⚠️ TELEGRAM_BOT_TOKEN is not set. Please add it as a GitHub Secret.")
@@ -20,7 +20,7 @@ bot = Bot(token=TELEGRAM_TOKEN)
 RSS_FEED_URL = "https://www.nu.nl/rss"
 
 def get_dutch_news():
-    """Fetch news from the RSS feed and remove advertisements"""
+    """Fetch news from the RSS feed and remove the first one (ad)"""
     feed = feedparser.parse(RSS_FEED_URL)
 
     if not feed.entries:
@@ -28,12 +28,13 @@ def get_dutch_news():
         return []
 
     news_list = []
-    for entry in feed.entries:
+    for index, entry in enumerate(feed.entries):
         title = entry.title
         link = entry.link
 
-        # 🛑 **Remove Ads**: Skip if title contains ad-related words
-        if any(word in title.lower() for word in ["advertentie", "sponsored", "promotie", "partnerbijdrage"]):
+        # 🛑 **Skip the first article (it's an ad)**
+        if index == 0:
+            print(f"🛑 Skipping first news (ad): {title}")
             continue
 
         news_list.append((title, link))
