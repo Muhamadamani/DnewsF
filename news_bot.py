@@ -16,15 +16,15 @@ if not TELEGRAM_TOKEN:
 bot = Bot(token=TELEGRAM_TOKEN)
 translator = Translator()
 
-# ✅ Multiple Dutch news sources
+# ✅ List of Dutch news sources
 RSS_FEEDS = [
-    "https://www.nu.nl/rss",
-    "https://feeds.nos.nl/nosnieuwsalgemeen",
-    "https://www.rtlnieuws.nl/service/rss/nieuws",
-    "https://www.telegraaf.nl/rss"
+    "https://www.nu.nl/rss",  
+    "https://feeds.nos.nl/nosnieuwsalgemeen",  
+    "https://www.rtlnieuws.nl/service/rss/nieuws",  
+    "https://www.telegraaf.nl/feed/route66.rss"  
 ]
 
-# ✅ File to store posted news
+# ✅ File to store posted news titles
 POSTED_NEWS_FILE = "posted_news.json"
 
 def load_posted_news():
@@ -40,30 +40,31 @@ def save_posted_news(news_titles):
         json.dump(news_titles, f)
 
 def get_dutch_news():
-    """Fetch news from multiple RSS feeds, removing the first (ad) entry from each"""
+    """Fetch news from multiple RSS feeds and remove ads"""
     news_list = []
     for rss_url in RSS_FEEDS:
         feed = feedparser.parse(rss_url)
         if len(feed.entries) > 1:
-            for entry in feed.entries[1:6]:  # Skip the first item (ad) and take the next 5
+            for entry in feed.entries[1:6]:  # Skip the first item (often an ad)
                 title = entry.title
                 link = entry.link
                 news_list.append((title, link))
-    return news_list
+
+    return news_list[:5]  # Limit total news items to 5 per update
 
 def improve_translation(original_text, translated_text):
-    """Enhance the translated text using ChatGPT API"""
+    """Enhance the translated text using ChatGPT or a free API"""
     try:
         api_url = "https://api.openai.com/v1/chat/completions"
         headers = {
-            "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+            "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",  # Store your API key as a secret
             "Content-Type": "application/json"
         }
         data = {
             "model": "gpt-3.5-turbo",
             "messages": [
-                {"role": "system", "content": "Improve this translation while keeping it accurate and professional."},
-                {"role": "user", "content": f"Original: {original_text}\nTranslation: {translated_text}\nImprove it further:"}
+                {"role": "system", "content": "Improve the translation of a news headline while keeping it accurate."},
+                {"role": "user", "content": f"Original: {original_text}\nTranslated: {translated_text}\nImprove it further:"}
             ]
         }
         response = requests.post(api_url, headers=headers, json=data)
@@ -95,7 +96,7 @@ def post_new_news():
         translated_title = translator.translate(title, src="nl", dest="fa").text
         improved_translation = improve_translation(title, translated_title)  # Improve translation
 
-        message += f"📢 {title}\n{improved_translation}\n🔗 [مشاهده خبر]({link})\n\n"
+        message += f"📢 {title}\n📢 {improved_translation}\n🔗 [مشاهده خبر]({link})\n\n"
 
         # ✅ Mark news as posted
         posted_news.append(title)
