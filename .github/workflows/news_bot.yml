@@ -17,16 +17,9 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Upgrade pip
-        run: python -m pip install --upgrade pip
-
       - name: Install dependencies
         run: |
-          pip install feedparser googletrans==4.0.0-rc1 python-telegram-bot jdatetime requests beautifulsoup4
-          pip install --force-reinstall feedparser
-
-      - name: Check Installed Packages
-        run: pip list
+          pip install feedparser mtranslate python-telegram-bot jdatetime requests beautifulsoup4
 
       - name: Run script
         env:
