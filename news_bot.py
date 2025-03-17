@@ -8,6 +8,9 @@ import jdatetime
 # ✅ Telegram bot credentials
 import os
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+if TELEGRAM_TOKEN is None:
+    raise ValueError("⚠️ TELEGRAM_BOT_TOKEN is not set. Please add it as a GitHub Secret.")
+
 
 CHANNEL_ID = "@DuchNewsFa"
 
