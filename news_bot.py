@@ -103,7 +103,7 @@ def post_new_news():
         translated_title = translator.translate(title, src="nl", dest="fa").text
         improved_translation = improve_translation(title, translated_title)  # Improve translation
 
-        message += f"📰 **خبر مهم به هلندی**: {title}\n🔹 **ترجمه فارسی (بهبود یافته)**: {improved_translation}\n🔗 [مشاهده خبر]({link})\n\n"
+        message += f"📰 ** **: {title}\n🔹 ** **: {improved_translation}\n🔗 [مشاهده خبر]({link})\n\n"
 
         # ✅ Mark news as posted
         posted_news.append(title)
