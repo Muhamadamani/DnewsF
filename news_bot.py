@@ -4,11 +4,10 @@ from telegram import Bot
 import os
 import requests
 import json
-import time
 
 # ✅ Load Telegram Bot Token from GitHub Secrets
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHANNEL_ID = "@your_channel"  # Replace with "@YourChannelName" or "-100XXXXXXXXX" for private channels
+CHANNEL_ID = "@DutchNewsFa"  # Replace with "@YourChannelName" or "-100XXXXXXXXX" for private channels
 
 if not TELEGRAM_TOKEN:
     raise ValueError("⚠️ TELEGRAM_BOT_TOKEN is not set. Please add it as a GitHub Secret.")
@@ -17,12 +16,12 @@ if not TELEGRAM_TOKEN:
 bot = Bot(token=TELEGRAM_TOKEN)
 translator = Translator()
 
-# ✅ List of Dutch news sources (including SportNieuws)
+# ✅ List of Dutch news sources
 RSS_FEEDS = [
-    "https://www.nu.nl/rss",
-    "https://feeds.nos.nl/nosnieuwsalgemeen",
-    "https://www.rtlnieuws.nl/service/rss/nieuws",
-    "https://www.telegraaf.nl/feed/route66.rss",
+    "https://www.nu.nl/rss",  
+    "https://feeds.nos.nl/nosnieuwsalgemeen",  
+    "https://www.rtlnieuws.nl/service/rss/nieuws",  
+    "https://www.telegraaf.nl/feed/route66.rss"  ,
     "https://sportnieuws.nl/feed"  # ✅ Added SportNieuws for sports news
 ]
 
@@ -77,34 +76,36 @@ def improve_translation(original_text, translated_text):
         return translated_text  # Return the original translation if API fails
 
 def post_new_news():
-    """Continuously check for new news and post as soon as it's available"""
+    """Fetch, translate, enhance, and post only new news items every hour"""
+    news_items = get_dutch_news()
+
+    if not news_items:
+        print("⚠️ No new news available.")
+        return
+
+    # ✅ Load previously posted news
     posted_news = load_posted_news()
+    new_news = [item for item in news_items if item[0] not in posted_news]
 
-    while True:  # ✅ Run forever, checking for new news
-        news_items = get_dutch_news()
+    if not new_news:
+        print("✅ No new articles to post.")
+        return
 
-        if not news_items:
-            print("⚠️ No new news available. Checking again later...")
-        else:
-            new_news = [item for item in news_items if item[0] not in posted_news]
+    message = ""
 
-            if new_news:
-                message = ""
-                for title, link in new_news:
-                    translated_title = translator.translate(title, src="nl", dest="fa").text
-                    improved_translation = improve_translation(title, translated_title)  # Improve translation
+    for title, link in new_news:
+        translated_title = translator.translate(title, src="nl", dest="fa").text
+        improved_translation = improve_translation(title, translated_title)  # Improve translation
 
-                    message += f"📢 {title}\n📢 {improved_translation}\n🔗 [مشاهده خبر]({link})\n\n"
+        message += f"📢 {title}\n📢 {improved_translation}\n🔗 [مشاهده خبر]({link})\n\n"
 
-                    # ✅ Mark news as posted
-                    posted_news.append(title)
+        # ✅ Mark news as posted
+        posted_news.append(title)
 
-                bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
+    bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
 
-                # ✅ Save updated news list
-                save_posted_news(posted_news)
-
-        time.sleep(300)  # ✅ Check for new news every 5 minutes
+    # ✅ Save the updated list of posted news
+    save_posted_news(posted_news)
 
 if __name__ == "__main__":
     post_new_news()
