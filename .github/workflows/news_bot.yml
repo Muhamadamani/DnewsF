@@ -2,8 +2,9 @@ name: Telegram News Bot
 
 on:
   workflow_dispatch:  # Allows manual trigger
+  push:  # Runs when code is updated
   schedule:
-    - cron: '0 * * * *'  # Runs every hour (0-minute mark)
+    - cron: '*/10 * * * *'  # Runs every 10 minutes
 
 jobs:
   run-script:
@@ -28,4 +29,4 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python news_bot.py
+        run: nohup python news_bot.py &
