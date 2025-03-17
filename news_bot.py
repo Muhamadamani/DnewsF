@@ -8,7 +8,7 @@ import time
 
 # ✅ Load Telegram Bot Token from GitHub Secrets
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHANNEL_ID = "@DutchNewsFa"  # Replace with "@YourChannelName" or "-100XXXXXXXXX" for private channels
+CHANNEL_ID = "@your_channel"  # Replace with "@YourChannelName" or "-100XXXXXXXXX" for private channels
 
 if not TELEGRAM_TOKEN:
     raise ValueError("⚠️ TELEGRAM_BOT_TOKEN is not set. Please add it as a GitHub Secret.")
@@ -17,12 +17,13 @@ if not TELEGRAM_TOKEN:
 bot = Bot(token=TELEGRAM_TOKEN)
 translator = Translator()
 
-# ✅ List of Dutch news sources
+# ✅ List of Dutch news sources (including SportNieuws)
 RSS_FEEDS = [
     "https://www.nu.nl/rss",
     "https://feeds.nos.nl/nosnieuwsalgemeen",
     "https://www.rtlnieuws.nl/service/rss/nieuws",
-    "https://www.telegraaf.nl/feed/route66.rss"
+    "https://www.telegraaf.nl/feed/route66.rss",
+    "https://sportnieuws.nl/feed"  # ✅ Added SportNieuws for sports news
 ]
 
 # ✅ File to store posted news titles
