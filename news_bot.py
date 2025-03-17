@@ -1,95 +1,88 @@
 import feedparser
-from mtranslate import translate
+from googletrans import Translator
 from telegram import Bot
 from datetime import datetime
 import jdatetime
-import requests
 import os
+import requests
 
 # ✅ Load Telegram Bot Token from GitHub Secrets
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHANNEL_ID = "@DuchNewsFa"  # Or "-100XXXXXXXXX" if your channel is private
+CHANNEL_ID = "@DuchNewsFa"  # Replace with "@YourChannelName" or "-100XXXXXXXXX" for private channels
 
 if not TELEGRAM_TOKEN:
     raise ValueError("⚠️ TELEGRAM_BOT_TOKEN is not set. Please add it as a GitHub Secret.")
 
-# ✅ Initialize bot
+# ✅ Initialize bot and translator
 bot = Bot(token=TELEGRAM_TOKEN)
+translator = Translator()
 
-# ✅ Use an RSS feed (NU.nl)
-RSS_FEED_URL = "https://www.nu.nl/rss"
+# ✅ Use an RSS feed instead of web scraping (to avoid website blocks)
+RSS_FEED_URL = "https://www.nu.nl/rss"  # Alternative: "https://feeds.nos.nl/nosnieuwsalgemeen"
 
 def get_dutch_news():
-    """Fetch news from the RSS feed and remove the first one (ad)"""
+    """Fetch news from the RSS feed, removing the first (ad) entry"""
     feed = feedparser.parse(RSS_FEED_URL)
 
-    if not feed.entries:
-        print("⚠️ No news found in RSS feed.")
+    if len(feed.entries) <= 1:
+        print("⚠️ No valid news found in RSS feed.")
         return []
 
     news_list = []
-    for index, entry in enumerate(feed.entries):
+    for entry in feed.entries[1:6]:  # Skip the first item (ad) and take the next 5
         title = entry.title
         link = entry.link
-
-        # 🛑 **Skip the first article (it's an ad)**
-        if index == 0:
-            print(f"🛑 Skipping first news (ad): {title}")
-            continue
-
         news_list.append((title, link))
 
-        # Limit to 5 valid news items
-        if len(news_list) == 5:
-            break
-
-    print(f"✅ Fetched {len(news_list)} news articles.")
     return news_list
 
 def get_dates():
     """Get Persian and Dutch dates"""
     now = datetime.now()
     persian_date = jdatetime.date.fromgregorian(year=now.year, month=now.month, day=now.day)
-    return persian_date.strftime("%Y/%m/%d"), now.strftime("%Y-%m-%d")
+    return now.strftime("%Y-%m-%d"), persian_date.strftime("%Y/%m/%d")
 
-def get_daily_quote():
-    """Fetch a new daily quote in Dutch"""
+def improve_translation(original_text, translated_text):
+    """Enhance the translated text using ChatGPT or a free API"""
     try:
-        response = requests.get("https://zenquotes.io/api/today")
-        response.raise_for_status()
-        quote_data = response.json()[0]
-        dutch_quote = quote_data["q"]
-        translated_quote = translate(dutch_quote, "fa", "nl")
-        return dutch_quote, translated_quote
+        api_url = "https://api.openai.com/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",  # Store your API key as a secret
+            "Content-Type": "application/json"
+        }
+        data = {
+            "model": "gpt-3.5-turbo",
+            "messages": [
+                {"role": "system", "content": "Improve the translation of a news headline while keeping it accurate."},
+                {"role": "user", "content": f"Original: {original_text}\nTranslated: {translated_text}\nImprove it further:"}
+            ]
+        }
+        response = requests.post(api_url, headers=headers, json=data)
+        result = response.json()
+        return result["choices"][0]["message"]["content"].strip()
     except Exception as e:
-        print(f"⚠️ Failed to fetch daily quote: {e}")
-        return "Elke dag is een kans om opnieuw te beginnen.", "هر روز فرصتی برای شروع دوباره است."
+        print(f"⚠️ ChatGPT API error: {e}")
+        return translated_text  # Return the original translation if API fails
 
 def post_daily_news():
-    """Fetch, translate, and post news at 6 AM"""
-    persian_date, dutch_date = get_dates()
+    """Fetch, translate, enhance, and post news at 6 AM"""
+    dutch_date, persian_date = get_dates()
     news_items = get_dutch_news()
-    dutch_quote, persian_quote = get_daily_quote()
-
-    message = f"📅 **تاریخ شمسی امروز:** {persian_date}\n📅 **تاریخ میلادی:** {dutch_date}\n\n"
 
     if not news_items:
-        message += "⚠️ امروزه خبری در دسترس نیست. لطفاً بعداً بررسی کنید.\n\n"
-    else:
-        for title, link in news_items:
-            translated_title = translate(title, "fa", "nl")
-            message += f"📰 **{title}**\n🔹 {translated_title}\n🔗 [مشاهده خبر]({link})\n\n"
-
-    message += f"💡 **{dutch_quote}**\n✨ {persian_quote}\n"
-
-    print("🚀 Sending message to Telegram...")
-    print(message)  # ✅ Debugging log for GitHub Actions
-
-    try:
+        message = "⚠️ امروزه خبری در دسترس نیست. لطفاً بعداً بررسی کنید."
         bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
-        print("✅ Message sent successfully!")
-    except Exception as e:
-        print(f"⚠️ Telegram send error: {e}")
+        return
+
+    message = f"📅 **تاریخ شمسی:** {persian_date}\n📅 **تاریخ میلادی:** {dutch_date}\n\n"
+
+    for title, link in news_items:
+        translated_title = translator.translate(title, src="nl", dest="fa").text
+        improved_translation = improve_translation(title, translated_title)  # Improve translation
+
+        message += f"📰 **خبر مهم به هلندی**: {title}\n🔹 **ترجمه فارسی (بهبود یافته)**: {improved_translation}\n🔗 [مشاهده خبر]({link})\n\n"
+
+    bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
 
 if __name__ == "__main__":
     post_daily_news()
