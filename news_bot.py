@@ -8,7 +8,7 @@ import os
 
 # ✅ Load Telegram Bot Token from GitHub Secrets
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHANNEL_ID = "@DuchNewsFa"
+CHANNEL_ID = "@your_channel"  # Or "-100XXXXXXXXX" if your channel is private
 
 if not TELEGRAM_TOKEN:
     raise ValueError("⚠️ TELEGRAM_BOT_TOKEN is not set. Please add it as a GitHub Secret.")
@@ -42,6 +42,7 @@ def get_dutch_news():
         if len(news_list) == 5:
             break
 
+    print(f"✅ Fetched {len(news_list)} news articles.")
     return news_list
 
 def get_dates():
@@ -80,7 +81,14 @@ def post_daily_news():
 
     message += f"💡 **{dutch_quote}**\n✨ {persian_quote}\n"
 
-    bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
+    print("🚀 Sending message to Telegram...")
+    print(message)  # ✅ Debugging log for GitHub Actions
+
+    try:
+        bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
+        print("✅ Message sent successfully!")
+    except Exception as e:
+        print(f"⚠️ Telegram send error: {e}")
 
 if __name__ == "__main__":
     post_daily_news()
