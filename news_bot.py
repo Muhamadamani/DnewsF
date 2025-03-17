@@ -1,42 +1,36 @@
-import requests
-from bs4 import BeautifulSoup
+import feedparser
 from googletrans import Translator
 from telegram import Bot
 from datetime import datetime
 import jdatetime
-#add
-# ✅ Telegram bot credentials
 import os
+
+# ✅ Load Telegram Bot Token from GitHub Secrets
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-if TELEGRAM_TOKEN is None:
+CHANNEL_ID = "@your_channel"
+
+if not TELEGRAM_TOKEN:
     raise ValueError("⚠️ TELEGRAM_BOT_TOKEN is not set. Please add it as a GitHub Secret.")
-
-
-CHANNEL_ID = "@DuchNewsFa"
 
 # ✅ Initialize bot and translator
 bot = Bot(token=TELEGRAM_TOKEN)
 translator = Translator()
 
-def get_dutch_news():
-    """Scrape the latest news from NOS.nl"""
-    url = "https://nos.nl/nieuws"
-    headers = {"User-Agent": "Mozilla/5.0"}
+# ✅ Use an RSS feed instead of web scraping (to avoid website blocks)
+RSS_FEED_URL = "https://www.nu.nl/rss"  # Alternative: "https://feeds.nos.nl/nosnieuwsalgemeen"
 
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-    except requests.RequestException as e:
-        print(f"⚠️ Request failed: {e}")
+def get_dutch_news():
+    """Fetch news from the RSS feed"""
+    feed = feedparser.parse(RSS_FEED_URL)
+
+    if not feed.entries:
+        print("⚠️ No news found in RSS feed.")
         return []
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    articles = soup.find_all("a", class_="link-block", limit=5)  # Get top 5 news articles
-
     news_list = []
-    for article in articles:
-        title = article.text.strip()
-        link = "https://nos.nl" + article["href"]
+    for entry in feed.entries[:5]:  # Get top 5 news items
+        title = entry.title
+        link = entry.link
         news_list.append((title, link))
 
     return news_list
