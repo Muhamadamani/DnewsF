@@ -6,7 +6,9 @@ from datetime import datetime
 import jdatetime
 #add
 # ✅ Telegram bot credentials
-TELEGRAM_TOKEN = "TELEGRAM_BOT_TOKEN"
+import os
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
 CHANNEL_ID = "@DuchNewsFa"
 
 # ✅ Initialize bot and translator
