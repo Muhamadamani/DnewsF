@@ -6,10 +6,11 @@ import jdatetime
 import os
 import requests
 import json
+import time
 
 # ✅ Load Telegram Bot Token from GitHub Secrets
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHANNEL_ID = "@DuchNewsFa"  # Replace with "@YourChannelName" or "-100XXXXXXXXX" for private channels
+CHANNEL_ID = "@your_channel"  # Replace with "@YourChannelName" or "-100XXXXXXXXX" for private channels
 
 if not TELEGRAM_TOKEN:
     raise ValueError("⚠️ TELEGRAM_BOT_TOKEN is not set. Please add it as a GitHub Secret.")
@@ -18,10 +19,15 @@ if not TELEGRAM_TOKEN:
 bot = Bot(token=TELEGRAM_TOKEN)
 translator = Translator()
 
-# ✅ Use an RSS feed instead of web scraping (to avoid website blocks)
-RSS_FEED_URL = "https://www.nu.nl/rss"  # Alternative: "https://feeds.nos.nl/nosnieuwsalgemeen"
+# ✅ Multiple news sources
+RSS_FEEDS = [
+    "https://www.nu.nl/rss",
+    "https://feeds.nos.nl/nosnieuwsalgemeen",
+    "https://www.rtlnieuws.nl/service/rss/nieuws",
+    "https://www.ad.nl/rss.xml"
+]
 
-# ✅ File to store posted news titles
+# ✅ File to store posted news
 POSTED_NEWS_FILE = "posted_news.json"
 
 def load_posted_news():
@@ -37,18 +43,18 @@ def save_posted_news(news_titles):
         json.dump(news_titles, f)
 
 def get_dutch_news():
-    """Fetch news from the RSS feed, removing the first (ad) entry"""
-    feed = feedparser.parse(RSS_FEED_URL)
-
-    if len(feed.entries) <= 1:
-        print("⚠️ No valid news found in RSS feed.")
-        return []
-
+    """Fetch news from multiple RSS feeds and remove duplicate articles"""
     news_list = []
-    for entry in feed.entries[1:6]:  # Skip the first item (ad) and take the next 5
-        title = entry.title
-        link = entry.link
-        news_list.append((title, link))
+    seen_titles = set()
+
+    for feed_url in RSS_FEEDS:
+        feed = feedparser.parse(feed_url)
+        for entry in feed.entries[1:6]:  # Skip the first item (ad) and take next 5
+            title = entry.title
+            link = entry.link
+            if title not in seen_titles:  # Avoid duplicate news
+                seen_titles.add(title)
+                news_list.append((title, link))
 
     return news_list
 
@@ -63,7 +69,7 @@ def improve_translation(original_text, translated_text):
     try:
         api_url = "https://api.openai.com/v1/chat/completions"
         headers = {
-            "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",  # Store your API key as a secret
+            "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
             "Content-Type": "application/json"
         }
         data = {
@@ -78,40 +84,36 @@ def improve_translation(original_text, translated_text):
         return result["choices"][0]["message"]["content"].strip()
     except Exception as e:
         print(f"⚠️ ChatGPT API error: {e}")
-        return translated_text  # Return the original translation if API fails
+        return translated_text  # Return original translation if API fails
 
 def post_new_news():
-    """Fetch, translate, enhance, and post only new news items every hour"""
-    dutch_date, persian_date = get_dates()
-    news_items = get_dutch_news()
-
-    if not news_items:
-        print("⚠️ No new news available.")
-        return
-
-    # ✅ Load previously posted news
+    """Continuously check for new news and post immediately when available"""
+    print("🚀 Bot is running, checking for new news...")
+    
     posted_news = load_posted_news()
-    new_news = [item for item in news_items if item[0] not in posted_news]
+    
+    while True:
+        news_items = get_dutch_news()
+        new_news = [item for item in news_items if item[0] not in posted_news]
 
-    if not new_news:
-        print("✅ No new articles to post.")
-        return
+        if new_news:
+            dutch_date, persian_date = get_dates()
+            message = f"📅 **تاریخ شمسی:** {persian_date}\n📅 **تاریخ میلادی:** {dutch_date}\n\n"
 
-    message = f"📢\n\n"
+            for title, link in new_news:
+                translated_title = translator.translate(title, src="nl", dest="fa").text
+                improved_translation = improve_translation(title, translated_title)
 
-    for title, link in new_news:
-        translated_title = translator.translate(title, src="nl", dest="fa").text
-        improved_translation = improve_translation(title, translated_title)  # Improve translation
+                message += f"📰 **خبر مهم به هلندی**: {title}\n🔹 **ترجمه فارسی (بهبود یافته)**: {improved_translation}\n🔗 [مشاهده خبر]({link})\n\n"
 
-        message += f"📰 ** **: {title}\n🔹 ** **: {improved_translation}\n🔗 [مشاهده خبر]({link})\n\n"
+                # ✅ Mark news as posted
+                posted_news.append(title)
 
-        # ✅ Mark news as posted
-        posted_news.append(title)
+            bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
+            save_posted_news(posted_news)
 
-    bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
-
-    # ✅ Save the updated list of posted news
-    save_posted_news(posted_news)
+        # ✅ Wait 10 minutes before checking again
+        time.sleep(600)
 
 if __name__ == "__main__":
     post_new_news()
