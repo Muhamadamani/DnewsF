@@ -22,4 +22,6 @@ jobs:
         run: pip install requests beautifulsoup4 googletrans==4.0.0-rc1 python-telegram-bot jdatetime
       
       - name: Run script
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: python news_bot.py
