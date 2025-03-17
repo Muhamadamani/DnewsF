@@ -5,6 +5,7 @@ from datetime import datetime
 import jdatetime
 import os
 import requests
+import json
 
 # ✅ Load Telegram Bot Token from GitHub Secrets
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -19,6 +20,21 @@ translator = Translator()
 
 # ✅ Use an RSS feed instead of web scraping (to avoid website blocks)
 RSS_FEED_URL = "https://www.nu.nl/rss"  # Alternative: "https://feeds.nos.nl/nosnieuwsalgemeen"
+
+# ✅ File to store posted news titles
+POSTED_NEWS_FILE = "posted_news.json"
+
+def load_posted_news():
+    """Load previously posted news from a file."""
+    if os.path.exists(POSTED_NEWS_FILE):
+        with open(POSTED_NEWS_FILE, "r") as f:
+            return json.load(f)
+    return []
+
+def save_posted_news(news_titles):
+    """Save posted news titles to a file."""
+    with open(POSTED_NEWS_FILE, "w") as f:
+        json.dump(news_titles, f)
 
 def get_dutch_news():
     """Fetch news from the RSS feed, removing the first (ad) entry"""
@@ -64,25 +80,38 @@ def improve_translation(original_text, translated_text):
         print(f"⚠️ ChatGPT API error: {e}")
         return translated_text  # Return the original translation if API fails
 
-def post_daily_news():
-    """Fetch, translate, enhance, and post news at 6 AM"""
+def post_new_news():
+    """Fetch, translate, enhance, and post only new news items every hour"""
     dutch_date, persian_date = get_dates()
     news_items = get_dutch_news()
 
     if not news_items:
-        message = "⚠️ امروزه خبری در دسترس نیست. لطفاً بعداً بررسی کنید."
-        bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
+        print("⚠️ No new news available.")
+        return
+
+    # ✅ Load previously posted news
+    posted_news = load_posted_news()
+    new_news = [item for item in news_items if item[0] not in posted_news]
+
+    if not new_news:
+        print("✅ No new articles to post.")
         return
 
     message = f"📅 **تاریخ شمسی:** {persian_date}\n📅 **تاریخ میلادی:** {dutch_date}\n\n"
 
-    for title, link in news_items:
+    for title, link in new_news:
         translated_title = translator.translate(title, src="nl", dest="fa").text
         improved_translation = improve_translation(title, translated_title)  # Improve translation
 
         message += f"📰 **خبر مهم به هلندی**: {title}\n🔹 **ترجمه فارسی (بهبود یافته)**: {improved_translation}\n🔗 [مشاهده خبر]({link})\n\n"
 
+        # ✅ Mark news as posted
+        posted_news.append(title)
+
     bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
 
+    # ✅ Save the updated list of posted news
+    save_posted_news(posted_news)
+
 if __name__ == "__main__":
-    post_daily_news()
+    post_new_news()
