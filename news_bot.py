@@ -7,7 +7,7 @@ import os
 
 # ✅ Load Telegram Bot Token from GitHub Secrets
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHANNEL_ID = "@your_channel"
+CHANNEL_ID = "@DuchNewsFa"
 
 if not TELEGRAM_TOKEN:
     raise ValueError("⚠️ TELEGRAM_BOT_TOKEN is not set. Please add it as a GitHub Secret.")
