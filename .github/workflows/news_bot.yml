@@ -3,7 +3,7 @@ name: Telegram News Bot
 on:
   workflow_dispatch:  # Allows manual trigger
   schedule:
-    - cron: '0 5 * * *'  # Runs at 6 AM Netherlands time (UTC+1)
+    - cron: '0 * * * *'  # Runs every hour (0-minute mark)
 
 jobs:
   run-script:
@@ -27,5 +27,5 @@ jobs:
       - name: Run script
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # ✅ Pass OpenAI API Key
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python news_bot.py
