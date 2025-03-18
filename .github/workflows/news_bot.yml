@@ -3,11 +3,12 @@ name: Telegram News Bot
 on:
   workflow_dispatch:  # Allows manual trigger
   schedule:
-    - cron: '0 * * * *'  # Runs every hour
+    - cron: '0 * * * *'  # Runs every hour (restart every hour to prevent failures)
 
 jobs:
   run-script:
     runs-on: ubuntu-latest
+    timeout-minutes: 55  # Let the script run for 55 minutes before restarting
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
