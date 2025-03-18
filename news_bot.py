@@ -33,7 +33,10 @@ def load_posted_news():
     """Load previously posted news from a file."""
     if os.path.exists(POSTED_NEWS_FILE):
         with open(POSTED_NEWS_FILE, "r") as f:
-            return json.load(f)
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return []  # Return empty list if file is corrupted
     return []
 
 def save_posted_news(news_titles):
@@ -48,8 +51,8 @@ def get_dutch_news():
         feed = feedparser.parse(rss_url)
         if len(feed.entries) > 1:
             for entry in feed.entries[1:6]:  # Skip the first item (often an ad)
-                title = entry.title
-                link = entry.link
+                title = entry.title.strip()
+                link = entry.link.strip()
                 news_list.append((title, link))
 
     return news_list[:5]  # Limit total news items to 5 per update
@@ -77,16 +80,16 @@ def improve_translation(original_text, translated_text):
         return translated_text  # Return the original translation if API fails
 
 def post_new_news():
-    """Continuously check for new news and post as soon as it's available"""
+    """Continuously check for new news and post as soon as it's available without repeating old news"""
     posted_news = load_posted_news()
 
     while True:  # ✅ Run forever, checking for new news
         news_items = get_dutch_news()
-
+        
         if not news_items:
             print("⚠️ No new news available. Checking again later...")
         else:
-            new_news = [item for item in news_items if item[0] not in posted_news]
+            new_news = [(title, link) for title, link in news_items if title not in posted_news]
 
             if new_news:
                 message = ""
