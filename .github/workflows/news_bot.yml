@@ -25,4 +25,4 @@ jobs:
         run: pip install python-telegram-bot feedparser requests
 
       - name: Run the bot
-        run: python your_script.py  # Replace with your actual file name
+        run: python news_bot.py  # Replace with your actual file name
